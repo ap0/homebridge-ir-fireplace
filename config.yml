@@ -1,0 +1,7 @@
+remotes:
+        fireplace:
+                power: key_power
+                timer: key_time
+                heat: key_mute
+                flame_down: key_volumedown
+                flame_up: key_volumeup
