@@ -1,7 +1,8 @@
-remotes:
-        fireplace:
-                power: key_power
-                timer: key_time
-                heat: key_mute
-                flame_down: key_volumedown
-                flame_up: key_volumeup
+outlet_host: 10.0.0.11
+min_power_threshold: 4.9
+remote:
+        power: key_power
+        timer: key_time
+        heat: key_mute
+        flame_down: key_volumedown
+        flame_up: key_volumeup

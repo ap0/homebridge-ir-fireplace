@@ -1,8 +1,8 @@
 # homebridge-ir-fireplace
 
-Simple API server to receive HTTP commands and execute [LIRC](http://www.lirc.org/) `irsend` commands via an API, meant to be used in HomeKit. The API is compatible with [Homebrige](https://github.com/nfarina/homebridge) (specifically [homebridge-http-switch](https://github.com/Supereg/homebridge-http-switch)).  A big improvement would be to communicate with the `lircd` socket directly (and allow more options in the config).
+Simple API server to receive HTTP commands and execute [LIRC](http://www.lirc.org/) `irsend` commands via an API, meant to be used in HomeKit.  The power state of the fireplace is tracked by querying a [TP-LINK HS110 Smart Plug](https://www.tp-link.com/us/products/details/cat-5258_HS110.html), which can be queried for energy usage details on your home network without having to rely on a cloud service, which makes it both low latency and not dependent on Internet access.  By tracking actual power usage, you can ensure that the fireplace has actually been turned on or off.
 
-The fireplace I wrote it to control has a single on/off button, so be careful using it in automations such as `Good Night` where you expect it to turn off, as it is possible to obstruct the infrared path.  I find it works best to configure it as a `toggle` switch in `homebridge-http-switch`.
+The API is compatible with [Homebrige](https://github.com/nfarina/homebridge) (specifically [homebridge-http-switch](https://github.com/Supereg/homebridge-http-switch)).  A big improvement would be to communicate with the `lircd` socket directly (and allow more options in the config).
 
 I used a [Raspberry Pi IR shield](http://www.raspberrypiwiki.com/index.php/Raspberry_Pi_IR_Control_Expansion_Board) with `LIRC` for this.  You can pick them up on Amazon for about $11.
 
@@ -24,14 +24,15 @@ Remotes map to different remotes in `lirc`.  Each remote in `lirc` has a key cod
 Example `config.yml`:
 
 ```yml
-repeat_count: 5
-remotes:
-        fireplace:
-                power: key_power
-                timer: key_time
-                heat: key_mute
-                flame_down: key_volumedown
-                flame_up: key_volumeup
+repeat_count: 5 # number of times to repeat commands (helpful for raw mode captures)
+remote_name: fireplace # The name of the remote in LIRC
+outlet_host: 10.0.0.20 # IP of the HS110 outlet
+remote:
+        power: key_power # power is required; all other fields are optional
+        timer: key_time
+        heat: key_mute
+        flame_down: key_volumedown
+        flame_up: key_volumeup
 ```
 
 So in this example, `GET /send/fireplace/power` would execute `irsend --count=5 SEND_ONCE fireplace key_power`.
@@ -45,9 +46,10 @@ Example Homebridge config:
             "accessory": "HTTP-SWITCH",
             "name": "Fireplace Power",
             "switchType": "stateful",
-            "onUrl": "http://firepi:8080/send/fireplace/power",
-            "offUrl": "http://firepi:8080/send/fireplace/power",
-            "statusUrl": "http://firepi:8080/status/fireplace/power"
+            "onUrl": "http://firepi:8080/power/on",
+            "offUrl": "http://firepi:8080/power/off",
+            "statusUrl": "http://firepi:8080/power/status",
+            "pullInterval": 5000
         }
     ]
 }
