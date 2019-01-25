@@ -131,28 +131,6 @@ func (f *fireplaceServer) getStatus(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type heatInput struct {
-	Value float64 `json:"value"`
-}
-
-func (f *fireplaceServer) setPower(w http.ResponseWriter, r *http.Request) {
-	var h heatInput
-
-	dec := json.NewDecoder(r.Body)
-	if err := dec.Decode(&h); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "couldn't parse json: %s", err.Error())
-		return
-	}
-	r.Body.Close()
-
-	if h.Value == 0 {
-		f.turnOff(w, r)
-	} else {
-		f.turnOn(w, r)
-	}
-}
-
 func (f *fireplaceServer) setHeat(w http.ResponseWriter, r *http.Request, desiredState PowerState) {
 
 	if desiredState == Off {
@@ -264,7 +242,6 @@ func (f *fireplaceServer) waitForHeatState(desiredState PowerState) error {
 		}
 
 		if err := func() error {
-			// Allow sending only one command at a time
 			if err := exec.Command(f.opts.IRSendPath,
 				fmt.Sprintf("--count=%d", f.opts.RepeatCount),
 				"SEND_ONCE",
@@ -300,6 +277,9 @@ func (f *fireplaceServer) waitForHeatState(desiredState PowerState) error {
 }
 
 func (f *fireplaceServer) waitForPowerState(w http.ResponseWriter, on bool) {
+	// Allow sending only one command at a time
+	f.mu.Lock()
+	defer f.mu.Unlock()
 
 	status, err := f.getPowerStatus()
 	if err != nil {
@@ -325,9 +305,6 @@ func (f *fireplaceServer) waitForPowerState(w http.ResponseWriter, on bool) {
 		}
 
 		if err := func() error {
-			// Allow sending only one command at a time
-			f.mu.Lock()
-			defer f.mu.Unlock()
 			if err := exec.Command(f.opts.IRSendPath,
 				fmt.Sprintf("--count=%d", f.opts.RepeatCount),
 				"SEND_ONCE",
@@ -455,7 +432,6 @@ func main() {
 
 	rtr.HandleFunc("/send/{command}", f.sendCommand).Methods(http.MethodGet)
 
-	rtr.HandleFunc("/power", f.setPower).Methods(http.MethodPost)
 	rtr.HandleFunc("/power/on", f.turnOn).Methods(http.MethodGet)
 	rtr.HandleFunc("/power/off", f.turnOff).Methods(http.MethodGet)
 	rtr.HandleFunc("/power/status", f.getStatus).Methods(http.MethodGet)
